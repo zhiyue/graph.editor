@@ -1,4 +1,5 @@
 $(function () {
+
     Q.registerImage('lamp', Q.Shapes.getShape(Q.Consts.SHAPE_CIRCLE, -8, -8, 16, 16));
 
     var lampGradient = new Q.Gradient(Q.Consts.GRADIENT_TYPE_RADIAL, [Q.toColor(0xAAFFFFFF), Q.toColor(0x33EEEEEE), Q.toColor(0x44888888), Q.toColor(0x33666666)],
@@ -22,8 +23,10 @@ $(function () {
 
     $('.graph-editor').graphEditor({
         data: 'data/topo2.json',
+        //data: 'data',
+        //saveService: 'save',
         images: [
-            {name: '预定义图形', images: graphs},
+            {name: 'Custom Images', images: graphs},
             {
                 name: 'Cisco图标',
                 root: 'data/cisco/',
@@ -43,6 +46,7 @@ $(function () {
                 properties: {
                     name: 'Message'
                 },
+                br: true,
                 styles: createLampStyles('#FF0')
             }, {
                 image: 'lamp',
@@ -69,6 +73,57 @@ $(function () {
                 },
                 styles: createLampStyles('#F0F')
             }]
-        }]
+        }],
+        callback: function(editor){
+            var graph = editor.graph;
+
+            var defaultStyles = graph.styles = {};
+            defaultStyles[Q.Styles.ARROW_TO] = false;
+
+            graph.moveToCenter()
+
+            var background = new GridBackground(graph);
+
+            var currentCell = 10;
+
+            function snapToGrid(x, y) {
+                var gap = currentCell;
+                x = Math.round(x / gap) * gap;
+                y = Math.round(y / gap) * gap;
+                return [x, y];
+            }
+
+            graph.interactionDispatcher.addListener(function (evt) {
+                if (evt.kind == Q.InteractionEvent.ELEMENT_MOVE_END) {
+                    var datas = evt.datas;
+                    datas.forEach(function (node) {
+                        if (!(node instanceof Q.Node) || node instanceof Q.Group) {
+                            return
+                        }
+                        var ps = snapToGrid(node.x, node.y);
+                        node.setLocation(ps[0], ps[1]);
+                    });
+                    return;
+                }
+                if (evt.kind == Q.InteractionEvent.POINT_MOVE_END) {
+                    var line = evt.data;
+                    Q.log(evt.point);
+                    var segment = evt.point.segment;
+                    segment.points = snapToGrid(segment.points[0], segment.points[1]);
+                    line.invalidate();
+                    return;
+                }
+                if (evt.kind == Q.InteractionEvent.ELEMENT_CREATED) {
+                    var node = evt.data;
+                    if (!(node instanceof Q.Node)) {
+                        return
+                    }
+                    var ps = snapToGrid(node.x, node.y);
+                    node.setLocation(ps[0], ps[1]);
+                    return;
+                }
+
+            });
+        }
     });
 });
